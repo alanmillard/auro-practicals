@@ -9,7 +9,7 @@ from rclpy.qos import QoSPresetProfiles
 from geometry_msgs.msg import Twist, Pose
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
-from auro_interfaces.msg import StringWithPose
+from auro_interfaces.msg import StringWithPose, Item, ItemList
 
 from tf_transformations import euler_from_quaternion
 import angles
@@ -35,6 +35,7 @@ SCAN_RIGHT = 3
 class State(Enum):
     FORWARD = 0
     TURNING = 1
+    COLLECTING = 2
 
 
 class RobotController(Node):
@@ -52,6 +53,14 @@ class RobotController(Node):
         self.turn_direction = TURN_LEFT # Direction to turn in the TURNING state
         self.goal_distance = random.uniform(1.0, 2.0) # Goal distance to travel in FORWARD state
         self.scan_triggered = [False] * 4 # Boolean value for each of the 4 LiDAR sensor sectors. True if obstacle detected within SCAN_THRESHOLD
+        self.items = ItemList()
+
+        self.item_subscriber = self.create_subscription(
+            ItemList,
+            '/items',
+            self.item_callback,
+            10
+        )
 
         # Subscribes to Odometry messages published on /odom topic
         # http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html
@@ -101,6 +110,9 @@ class RobotController(Node):
         # Creates a timer that calls the control_loop method repeatedly - each loop represents single iteration of the FSM
         self.timer_period = 0.1 # 100 milliseconds = 10 Hz
         self.timer = self.create_timer(self.timer_period, self.control_loop)
+
+    def item_callback(self, msg):
+        self.items = msg
 
     # Called every time odom_subscriber receives an Odometry message from the /odom topic
     #
@@ -189,6 +201,10 @@ class RobotController(Node):
                         self.turn_direction = TURN_LEFT
                         self.get_logger().info(f"Detected obstacle to the right, turning left by {self.turn_angle} degrees")
                     return
+                
+                if len(self.items.data) > 0:
+                    self.state = State.COLLECTING
+                    return
 
                 msg = Twist()
                 msg.linear.x = LINEAR_VELOCITY
@@ -209,6 +225,10 @@ class RobotController(Node):
 
             case State.TURNING:
 
+                if len(self.items.data) > 0:
+                    self.state = State.COLLECTING
+                    return
+
                 msg = Twist()
                 msg.angular.z = self.turn_direction * ANGULAR_VELOCITY
                 self.cmd_vel_publisher.publish(msg)
@@ -222,6 +242,23 @@ class RobotController(Node):
                     self.goal_distance = random.uniform(1.0, 2.0)
                     self.state = State.FORWARD
                     self.get_logger().info(f"Finished turning, driving forward by {self.goal_distance:.2f} metres")
+
+            case State.COLLECTING:
+
+                if len(self.items.data) == 0:
+                    self.previous_pose = self.pose
+                    self.state = State.FORWARD
+                    return
+                
+                item = self.items.data[0]
+
+                estimated_distance = 69.0 * float(item.diameter) ** -0.89
+
+                msg = Twist()
+                msg.linear.x = 0.25 * estimated_distance
+                msg.angular.z = item.x / 320.0
+
+                self.cmd_vel_publisher.publish(msg)
 
             case _:
                 pass
