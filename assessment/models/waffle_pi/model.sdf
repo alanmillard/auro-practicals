@@ -33,14 +33,13 @@
         <pose>-0.064 0 0 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>model://turtlebot3_common/meshes/waffle_pi_base.dae</uri>
-            <scale>0.001 0.001 0.001</scale>
+            <uri>model://waffle_pi_common/meshes/waffle_pi_base_smooth.dae</uri>
           </mesh>
         </geometry>
         <material>
           <script>
             <uri>model://media/materials/scripts/assessment_materials.material</uri>
-            <name>magenta</name>
+            <name>magenta_outlined</name>
           </script>
         </material>
       </visual>
@@ -129,14 +128,13 @@
         <pose>-0.064 0 0.121 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>model://turtlebot3_common/meshes/lds.dae</uri>
-            <scale>0.001 0.001 0.001</scale>
+            <uri>model://waffle_pi_common/meshes/lds_smooth.dae</uri>
           </mesh>
         </geometry>
         <material>
           <script>
             <uri>model://media/materials/scripts/assessment_materials.material</uri>
-            <name>grey</name>
+            <name>grey_outlined</name>
           </script>
         </material>
       </visual>
@@ -228,14 +226,13 @@
         <pose>0.0 0.144 0.023 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>model://turtlebot3_common/meshes/tire.dae</uri>
-            <scale>0.001 0.001 0.001</scale>
+            <uri>model://waffle_pi_common/meshes/tire_smooth.dae</uri>
           </mesh>
         </geometry>
         <material>
           <script>
             <uri>model://media/materials/scripts/assessment_materials.material</uri>
-            <name>grey</name>
+            <name>grey_outlined</name>
           </script>
         </material>
       </visual>
@@ -292,14 +289,13 @@
         <pose>0.0 -0.144 0.023 0 0 0</pose>
         <geometry>
           <mesh>
-            <uri>model://turtlebot3_common/meshes/tire.dae</uri>
-            <scale>0.001 0.001 0.001</scale>
+            <uri>model://waffle_pi_common/meshes/tire_smooth.dae</uri>
           </mesh>
         </geometry>
         <material>
           <script>
             <uri>model://media/materials/scripts/assessment_materials.material</uri>
-            <name>grey</name>
+            <name>grey_outlined</name>
           </script>
         </material>
       </visual>

@@ -53,6 +53,9 @@ class ItemSensor(Node):
         except CvBridgeError as e:
             self.get_logger().info(f"CvBridgeError: {e}")
 
+        image_width = frame.shape[1]
+        image_height = frame.shape[0]
+
         contours_frame = frame.copy()
         overlay = frame.copy()
 
@@ -108,7 +111,7 @@ class ItemSensor(Node):
                     
                     for point in contour:
                         x, y = point[0]
-                        if x == 0 or x == 640 - 1 or y == 0 or y == 480 - 1:
+                        if x == 0 or x == image_width - 1 or y == 0 or y == image_height - 1:
                             intersects_border = True
                             break
 
@@ -130,8 +133,8 @@ class ItemSensor(Node):
                         cv2.circle(overlay, centre, radius, black, -1, lineType=cv2.LINE_AA)
 
                         msg = Item()
-                        msg.x = int((contours_frame.shape[1] / 2) - x)
-                        msg.y = int((contours_frame.shape[0] / 2) - y)
+                        msg.x = int((image_width / 2) - x)
+                        msg.y = int((image_height / 2) - y)
                         msg.diameter = radius * 2
                         msg.colour = colour.name
                         msg.value = self.item_values[colour]

@@ -3,21 +3,18 @@
 # https://github.com/ros-planning/navigation2/blob/humble/nav2_bringup/launch/tb3_simulation_launch.py
 
 import os
-
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
-from launch.conditions import IfCondition
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    package_dir = get_package_share_directory('assessment')
+    package_dir = FindPackageShare('assessment')
     turtlebot3_gazebo_package_dir = get_package_share_directory('turtlebot3_gazebo')
-
 
     namespace = LaunchConfiguration('namespace')
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
@@ -45,7 +42,7 @@ def generate_launch_description():
 
     declare_robot_sdf_cmd = DeclareLaunchArgument(
         'robot_sdf',
-        default_value=os.path.join(package_dir, 'models', 'waffle_pi', 'model.sdf'),
+        default_value=PathJoinSubstitution([package_dir, 'models', 'waffle_pi', 'model.sdf']),
         description='Full path to robot SDF file to spawn the robot in Gazebo')
 
     urdf = os.path.join(turtlebot3_gazebo_package_dir, 'urdf', 'turtlebot3_waffle_pi' + '.urdf')

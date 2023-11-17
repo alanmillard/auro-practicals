@@ -2,17 +2,14 @@
 # https://raw.githubusercontent.com/ros-planning/navigation2/humble/nav2_bringup/launch/rviz_launch.py
 # https://github.com/ROBOTIS-GIT/turtlebot3/blob/humble-devel/turtlebot3_bringup/launch/rviz2.launch.py
 
-import os
-
-from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, EmitEvent, RegisterEventHandler
-from launch.conditions import IfCondition, UnlessCondition, LaunchConfigurationEquals
+from launch.conditions import LaunchConfigurationEquals
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 from nav2_common.launch import ReplaceString
 
 
@@ -32,7 +29,7 @@ def generate_launch_description():
 
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
         'rviz_config',
-        default_value=os.path.join(get_package_share_directory(package_name), 'rviz', 'namespaced.rviz'),
+        default_value=PathJoinSubstitution([FindPackageShare(package_name), 'rviz', 'namespaced.rviz']),
         description='Full path to the RViz config file to use')
 
     namespaced_rviz_config_file = ReplaceString(

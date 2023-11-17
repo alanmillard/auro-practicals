@@ -5,8 +5,6 @@ from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException
 
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Point
-
 from assessment_interfaces.msg import HomeZone
 
 import cv2
@@ -37,6 +35,9 @@ class HomeZoneSensor(Node):
             frame = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             self.get_logger().info(f"CvBridgeError: {e}")
+
+        image_width = frame.shape[1]
+        image_height = frame.shape[0]
 
         augmented = frame.copy()
 
@@ -76,9 +77,9 @@ class HomeZoneSensor(Node):
             cv2.circle(augmented, (centre_x, centre_y), 6, white, -1, lineType=cv2.LINE_AA)
 
             msg.visible = True
-            msg.x = int((augmented.shape[1] / 2) - centre_x)
-            msg.y = int((augmented.shape[0] / 2) - centre_y)
-            msg.size = np.count_nonzero(mask) / (augmented.shape[0] * augmented.shape[1])
+            msg.x = int((image_width / 2) - centre_x)
+            msg.y = int((image_height / 2) - centre_y)
+            msg.size = np.count_nonzero(mask) / (image_width * image_height)
         else:
             msg.visible = False
             msg.x = 0

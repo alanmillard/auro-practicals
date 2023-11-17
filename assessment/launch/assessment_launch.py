@@ -1,16 +1,14 @@
 # Based on: https://github.com/ros-planning/navigation2/blob/humble/nav2_bringup/launch/cloned_multi_tb3_simulation_launch.py
-import os
-
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription, LaunchContext
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction, LogInfo, OpaqueFunction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, TextSubstitution
+from launch.substitutions import LaunchConfiguration, TextSubstitution, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 package_name = 'assessment'
-launch_file_dir = os.path.join(get_package_share_directory(package_name), 'launch')
+launch_file_dir = PathJoinSubstitution([FindPackageShare(package_name), 'launch'])
 
 def group_action(context : LaunchContext):
 
@@ -18,9 +16,9 @@ def group_action(context : LaunchContext):
     visualise_sensors = eval(context.launch_configurations['visualise_sensors'].lower().capitalize())
 
     if visualise_sensors == True:
-        robot_sdf = os.path.join(get_package_share_directory(package_name), 'models', 'waffle_pi_sensors', 'model.sdf')
+        robot_sdf = PathJoinSubstitution([FindPackageShare(package_name), 'models', 'waffle_pi_sensors', 'model.sdf'])
     else:
-        robot_sdf = os.path.join(get_package_share_directory(package_name), 'models', 'waffle_pi', 'model.sdf')
+        robot_sdf = PathJoinSubstitution([FindPackageShare(package_name), 'models', 'waffle_pi', 'model.sdf'])
 
     robots_list = {}
 
@@ -57,13 +55,14 @@ def group_action(context : LaunchContext):
 
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
-                    os.path.join(launch_file_dir, 'rviz_launch.py')),
+                    PathJoinSubstitution([launch_file_dir, 'rviz_launch.py'])),
                 condition=IfCondition(context.launch_configurations['use_rviz']),
                 launch_arguments={'namespace': TextSubstitution(text=robot_name)}.items()),
 
             IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(os.path.join(launch_file_dir,
-                                                           'spawn_robot_launch.py')),
+                PythonLaunchDescriptionSource(PathJoinSubstitution([
+                    launch_file_dir,
+                    'spawn_robot_launch.py'])),
                 launch_arguments={'namespace': robot_name,
                                   'x_pose': TextSubstitution(text=str(init_pose['x'])),
                                   'y_pose': TextSubstitution(text=str(init_pose['y'])),
@@ -79,6 +78,11 @@ def group_action(context : LaunchContext):
                 package=package_name,
                 executable='home_zone_sensor',
                 output='screen',
+                namespace=robot_name),
+            Node(
+                package=package_name,
+                executable='robot_sensor',
+                output='screen',
                 namespace=robot_name)
         ])
     
@@ -87,7 +91,7 @@ def group_action(context : LaunchContext):
     return bringup_cmd_group
 
 def generate_launch_description():
-    pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
+    pkg_gazebo_ros = FindPackageShare('gazebo_ros')
 
     num_robots = LaunchConfiguration('num_robots')
     visualise_sensors = LaunchConfiguration('visualise_sensors')
@@ -126,21 +130,21 @@ def generate_launch_description():
         default_value='0',
         description='Random number seed for item manager')
     
-    world = os.path.join(
-        get_package_share_directory(package_name),
+    world = PathJoinSubstitution([
+        FindPackageShare(package_name),
         'worlds',
         'assessment_world.world'
-    )
+    ])
 
-    world_obstacles = os.path.join(
-        get_package_share_directory(package_name),
+    world_obstacles = PathJoinSubstitution([
+        FindPackageShare(package_name),
         'worlds',
         'assessment_world_obstacles.world'
-    )
+    ])
 
     gzserver_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
+            PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzserver.launch.py'])
         ),
         condition=UnlessCondition(obstacles),
         launch_arguments={'world': world}.items()
@@ -149,7 +153,7 @@ def generate_launch_description():
 
     gzserver_cmd_obstacles = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
+            PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzserver.launch.py'])
         ),
         condition=IfCondition(obstacles),
         launch_arguments={'world': world_obstacles}.items()
@@ -158,7 +162,7 @@ def generate_launch_description():
 
     gzclient_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')
+            PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzclient.launch.py'])
         ),
         # launch_arguments={'verbose': 'true'}.items()
     )
@@ -178,7 +182,7 @@ def generate_launch_description():
 
     bringup_cmd_group = OpaqueFunction(function=group_action)
         
-    ld = LaunchDescription()    
+    ld = LaunchDescription()
 
     # Declare the launch options
     ld.add_action(declare_num_robots_cmd)

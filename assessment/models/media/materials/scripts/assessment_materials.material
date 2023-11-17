@@ -106,21 +106,6 @@ material yellow
   }
 }
 
-vertex_program colour_vertex_shader glsl
-{
-  source colour_vertex_shader.glsl
-}
- 
-fragment_program colour_fragment_shader glsl
-{
-  source colour_fragment_shader.glsl
-
-  default_params
-  {
-    param_named colour float4 1 1 1 1
-  }
-}  
-
 vertex_program outline_vertex_shader glsl
 {
   source outline_vertex_shader.glsl
@@ -149,22 +134,40 @@ abstract pass outline
   depth_write off
   depth_check on
 
-  vertex_program_ref outline_vertex_shader {}
-  fragment_program_ref outline_fragment_shader {}
+  vertex_program_ref outline_vertex_shader
+  {
+    param_named scale float $scale
+  }
+  fragment_program_ref outline_fragment_shader
+  {
+    param_named colour float4 $colour
+  }
+}
+
+abstract pass colour
+{
+  vertex_program_ref outline_vertex_shader
+  {
+    param_named scale float 0.0
+  }
+  fragment_program_ref outline_fragment_shader
+  {
+    param_named colour float4 $colour
+  }
 }
 
 material red_outlined
 {
   technique
   {
-    pass: outline {}
-    pass
+    pass: outline
     {
-      vertex_program_ref colour_vertex_shader {}
-      fragment_program_ref colour_fragment_shader 
-      {
-        param_named colour float4 1 0 0 1
-      }
+      set $scale 0.1
+      set $colour "1 1 0 1"
+    }
+    pass: colour
+    {
+      set $colour "1 0 0 1"
     }
   }
 }
@@ -173,14 +176,14 @@ material green_outlined
 {
   technique
   {
-    pass: outline {}
-    pass
+    pass: outline
     {
-      vertex_program_ref colour_vertex_shader {}
-      fragment_program_ref colour_fragment_shader 
-      {
-        param_named colour float4 0 1 0 1
-      }
+      set $scale 0.1
+      set $colour "1 1 0 1"
+    }
+    pass: colour
+    {
+      set $colour "0 1 0 1"
     }
   }
 }
@@ -189,14 +192,46 @@ material blue_outlined
 {
   technique
   {
-    pass: outline {}
-    pass
+    pass: outline
     {
-      vertex_program_ref colour_vertex_shader {}
-      fragment_program_ref colour_fragment_shader 
-      {
-        param_named colour float4 0 0 1 1
-      }
+      set $scale 0.1
+      set $colour "1 1 0 1"
+    }
+    pass: colour
+    {
+      set $colour "0 0 1 1"
+    }
+  }
+}
+
+material magenta_outlined
+{
+  technique
+  {
+    pass: outline
+    {
+      set $scale 0.01
+      set $colour "1 1 0 1"
+    }
+    pass: colour
+    {
+      set $colour "1 0 1 1"
+    }
+  }
+}
+
+material grey_outlined
+{
+  technique
+  {
+    pass: outline
+    {
+      set $scale 0.01
+      set $colour "1 1 0 1"
+    }
+    pass: colour
+    {
+      set $colour "0.5 0.5 0.5 1"
     }
   }
 }

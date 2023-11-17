@@ -50,6 +50,7 @@ setup(
             'item_manager = assessment.item_manager:main',
             'item_sensor = assessment.item_sensor:main',
             'home_zone_sensor = assessment.home_zone_sensor:main',
+            'robot_sensor = assessment.robot_sensor:main',
         ],
     },
 )
