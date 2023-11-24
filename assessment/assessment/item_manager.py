@@ -17,7 +17,6 @@ from ament_index_python.packages import get_package_share_directory
 from gazebo_msgs.msg import EntityState
 from gazebo_msgs.srv import SpawnEntity, GetModelList, GetEntityState, SetEntityState
 from geometry_msgs.msg import Pose, Twist
-from std_msgs.msg import Bool
 from assessment_interfaces.msg import ItemHolder, ItemHolders, ItemLog
 
 from tf2_ros import TransformException
@@ -51,7 +50,6 @@ class Cluster():
         self.x = x
         self.y = y
         self.colour = colour
-        self.items = []
 
     def __repr__(self):
         return f'({self.x}, {self.y})'
@@ -174,8 +172,8 @@ class ItemManager(Node):
             x = self.clusters[cluster_id].x + round(radius * math.cos(angle), 2)
             y = self.clusters[cluster_id].y + round(radius * math.sin(angle), 2)
 
-            for item_id in self.clusters[cluster_id].items:
-                if math.dist((self.items[item_id].x, self.items[item_id].y), (x, y)) < 0.3:
+            for item in self.items.values():
+                if item.cluster_id == cluster_id and math.dist((item.x, item.y), (x, y)) < 0.3:
                     break
             else:
                 return x, y
@@ -255,7 +253,6 @@ class ItemManager(Node):
                     x, y = self.generate_item_position(cluster_id)
 
                     item_id = "item" + str(self.item_counter)
-                    self.clusters[cluster_id].items.append(item_id)
                     self.items[item_id] = Item(x, y, colour, cluster_id)
                     self.spawn_item(item_id, x, y, colour)
 

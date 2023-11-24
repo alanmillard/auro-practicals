@@ -1,4 +1,7 @@
 # Based on: https://github.com/ros-planning/navigation2/blob/humble/nav2_bringup/launch/cloned_multi_tb3_simulation_launch.py
+import os
+from ament_index_python.packages import get_package_share_directory
+
 from launch import LaunchDescription, LaunchContext
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction, LogInfo, OpaqueFunction
 from launch.conditions import IfCondition, UnlessCondition
@@ -57,13 +60,17 @@ def group_action(context : LaunchContext):
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution([launch_file_dir, 'rviz_launch.py'])),
                 condition=IfCondition(context.launch_configurations['use_rviz']),
-                launch_arguments={'namespace': TextSubstitution(text=robot_name)}.items()),
+                launch_arguments={'namespace': TextSubstitution(text=robot_name),
+                                  'rviz_config': context.launch_configurations['rviz_config']}.items()),
 
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(PathJoinSubstitution([
                     launch_file_dir,
                     'spawn_robot_launch.py'])),
                 launch_arguments={'namespace': robot_name,
+                                  'use_nav2': context.launch_configurations['use_nav2'],
+                                  'map': context.launch_configurations['map'],
+                                  'params_file': context.launch_configurations['params_file'],
                                   'x_pose': TextSubstitution(text=str(init_pose['x'])),
                                   'y_pose': TextSubstitution(text=str(init_pose['y'])),
                                   'yaw': TextSubstitution(text=str(init_pose['yaw'])),
@@ -96,9 +103,23 @@ def generate_launch_description():
     num_robots = LaunchConfiguration('num_robots')
     visualise_sensors = LaunchConfiguration('visualise_sensors')
     use_rviz = LaunchConfiguration('use_rviz')
+    rviz_config_file = LaunchConfiguration('rviz_config')
     obstacles = LaunchConfiguration('obstacles')
     item_manager = LaunchConfiguration('item_manager')
     random_seed = LaunchConfiguration('random_seed')
+    use_nav2 = LaunchConfiguration('use_nav2')
+    map_yaml_file = LaunchConfiguration('map')
+    params_file = LaunchConfiguration('params_file')
+
+    declare_map_yaml_cmd = DeclareLaunchArgument(
+        'map',
+        default_value=os.path.join(get_package_share_directory('assessment'), 'maps', 'assessment_world.yaml'),
+        description='Full path to map file to load')
+
+    declare_params_file_cmd = DeclareLaunchArgument(
+        'params_file',
+        default_value=os.path.join(get_package_share_directory('assessment'), 'params', 'nav2_params_namespaced.yaml'),
+        description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_num_robots_cmd = DeclareLaunchArgument(
         'num_robots',
@@ -115,6 +136,11 @@ def generate_launch_description():
         default_value='True',
         description='Whether to start RViz')
     
+    declare_rviz_config_file_cmd = DeclareLaunchArgument(
+        'rviz_config',
+        default_value=PathJoinSubstitution([FindPackageShare(package_name), 'rviz', 'namespaced.rviz']),
+        description='Full path to the RViz config file to use')    
+    
     declare_obstacles_cmd = DeclareLaunchArgument(
         'obstacles',
         default_value='true',
@@ -129,6 +155,11 @@ def generate_launch_description():
         'random_seed',
         default_value='0',
         description='Random number seed for item manager')
+    
+    declare_use_nav2_cmd = DeclareLaunchArgument(
+        'use_nav2',
+        default_value='False',
+        description='Whether to use the navigation stack (Nav2)')
     
     world = PathJoinSubstitution([
         FindPackageShare(package_name),
@@ -148,7 +179,6 @@ def generate_launch_description():
         ),
         condition=UnlessCondition(obstacles),
         launch_arguments={'world': world}.items()
-        # launch_arguments={'world': world, 'verbose': 'true'}.items()
     )
 
     gzserver_cmd_obstacles = IncludeLaunchDescription(
@@ -157,14 +187,12 @@ def generate_launch_description():
         ),
         condition=IfCondition(obstacles),
         launch_arguments={'world': world_obstacles}.items()
-        # launch_arguments={'world': world_obstacles, 'verbose': 'true'}.items()
     )
 
     gzclient_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzclient.launch.py'])
         ),
-        # launch_arguments={'verbose': 'true'}.items()
     )
 
     start_tf_relay_cmd = Node(
@@ -188,9 +216,13 @@ def generate_launch_description():
     ld.add_action(declare_num_robots_cmd)
     ld.add_action(declare_visualise_sensors_cmd)
     ld.add_action(declare_use_rviz_cmd)
+    ld.add_action(declare_rviz_config_file_cmd)
     ld.add_action(declare_obstacles_cmd)
     ld.add_action(declare_item_manager_cmd)
     ld.add_action(declare_random_seed_cmd)
+    ld.add_action(declare_use_nav2_cmd)
+    ld.add_action(declare_map_yaml_cmd)
+    ld.add_action(declare_params_file_cmd)
 
     # Add the commands to the launch description
     ld.add_action(gzserver_cmd)
