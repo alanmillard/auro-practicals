@@ -4,11 +4,11 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription, LaunchContext
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction, LogInfo, OpaqueFunction
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetParameter
 
 import xml.etree.ElementTree as ET
 
@@ -258,6 +258,8 @@ def generate_launch_description():
     bringup_cmd_group = OpaqueFunction(function=group_action)
         
     ld = LaunchDescription()
+
+    ld.add_action(SetParameter(name='use_sim_time', value=True))
 
     # Declare the launch options
     ld.add_action(declare_num_robots_cmd)

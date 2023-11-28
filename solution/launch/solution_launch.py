@@ -3,7 +3,7 @@ from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetParameter
 
 def generate_launch_description():
 
@@ -38,6 +38,8 @@ def generate_launch_description():
         namespace='robot1')
 
     ld = LaunchDescription()
+
+    ld.add_action(SetParameter(name='use_sim_time', value=True))
 
     ld.add_action(assessment_cmd)
     ld.add_action(robot_controller_cmd)
