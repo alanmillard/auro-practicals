@@ -10,18 +10,80 @@ from launch.substitutions import LaunchConfiguration, TextSubstitution, PathJoin
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
+import xml.etree.ElementTree as ET
+
 package_name = 'assessment'
 launch_file_dir = PathJoinSubstitution([FindPackageShare(package_name), 'launch'])
+pkg_gazebo_ros = FindPackageShare('gazebo_ros')
+
+def gazebo_world(context : LaunchContext):
+
+    obstacles = eval(context.launch_configurations['obstacles'].lower().capitalize())
+
+    world_path = os.path.join(get_package_share_directory(package_name), 'worlds', 'assessment_world.world')
+    tree = ET.parse(world_path)
+    root = tree.getroot()
+
+    if obstacles == False:
+        for world in root.findall('.//world'):
+            for model in world.findall('.//model'):
+                if "box" in model.attrib['name'] or "cylinder" in model.attrib['name']:
+                    world.remove(model)
+
+    world = os.path.join(get_package_share_directory(package_name), 'worlds', 'simulation_world.world')
+
+    with open(world, 'w') as f:
+        tree.write(f, encoding='unicode')
+
+    gzserver_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzserver.launch.py'])
+        ),
+        launch_arguments={'world': world}.items()
+    )
+
+    return [gzserver_cmd]
 
 def group_action(context : LaunchContext):
 
     num_robots = int(context.launch_configurations['num_robots'])
-    visualise_sensors = eval(context.launch_configurations['visualise_sensors'].lower().capitalize())
+    visualise_sensors = context.launch_configurations['visualise_sensors'].lower()
+    odometry_source = context.launch_configurations['odometry_source']
+    sensor_noise = eval(context.launch_configurations['sensor_noise'].lower().capitalize())
 
-    if visualise_sensors == True:
-        robot_sdf = PathJoinSubstitution([FindPackageShare(package_name), 'models', 'waffle_pi_sensors', 'model.sdf'])
-    else:
-        robot_sdf = PathJoinSubstitution([FindPackageShare(package_name), 'models', 'waffle_pi', 'model.sdf'])
+    sdf_path = os.path.join(get_package_share_directory(package_name), 'models', 'waffle_pi', 'model.sdf')
+    tree = ET.parse(sdf_path)
+    root = tree.getroot()
+
+    for node in root.iter("visualize"):
+        for element in node.iter():
+            element.text = visualise_sensors
+
+    for node in root.iter("odometry_source"):
+        for element in node.iter():
+            if odometry_source == "ENCODER":
+                element.text = "0"
+            elif odometry_source == "WORLD":
+                element.text = "1"
+
+    if sensor_noise == False:
+
+        for sensor in root.findall('.//sensor'):
+            for imu in sensor.findall('.//imu'):
+                sensor.remove(imu)
+
+        for ray in root.findall('.//ray'):
+            for noise in ray.findall('.//noise'):
+                ray.remove(noise)
+
+        for camera in root.findall('.//camera'):
+            for noise in camera.findall('.//noise'):
+                camera.remove(noise)         
+
+    robot_sdf = os.path.join(get_package_share_directory(package_name), 'models', 'robot.sdf')
+
+    with open(robot_sdf, 'w') as f:
+        tree.write(f, encoding='unicode')
 
     robots_list = {}
 
@@ -98,10 +160,11 @@ def group_action(context : LaunchContext):
     return bringup_cmd_group
 
 def generate_launch_description():
-    pkg_gazebo_ros = FindPackageShare('gazebo_ros')
 
     num_robots = LaunchConfiguration('num_robots')
     visualise_sensors = LaunchConfiguration('visualise_sensors')
+    odometry_source = LaunchConfiguration('odometry_source')
+    sensor_noise = LaunchConfiguration('sensor_noise')
     use_rviz = LaunchConfiguration('use_rviz')
     rviz_config_file = LaunchConfiguration('rviz_config')
     obstacles = LaunchConfiguration('obstacles')
@@ -130,6 +193,16 @@ def generate_launch_description():
         'visualise_sensors',
         default_value='false',
         description='Whether to visualise sensors in Gazebo')
+    
+    declare_odometry_source_cmd = DeclareLaunchArgument(
+        'odometry_source',
+        default_value='ENCODER',
+        description='Odometry source - ENCODER or WORLD')
+    
+    declare_sensor_noise_cmd = DeclareLaunchArgument(
+        'sensor_noise',
+        default_value='false',
+        description='Whether to enable sensor noise (applies to camera, LiDAR, and IMU)')
     
     declare_use_rviz_cmd = DeclareLaunchArgument(
         'use_rviz',
@@ -161,33 +234,7 @@ def generate_launch_description():
         default_value='False',
         description='Whether to use the navigation stack (Nav2)')
     
-    world = PathJoinSubstitution([
-        FindPackageShare(package_name),
-        'worlds',
-        'assessment_world.world'
-    ])
-
-    world_obstacles = PathJoinSubstitution([
-        FindPackageShare(package_name),
-        'worlds',
-        'assessment_world_obstacles.world'
-    ])
-
-    gzserver_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzserver.launch.py'])
-        ),
-        condition=UnlessCondition(obstacles),
-        launch_arguments={'world': world}.items()
-    )
-
-    gzserver_cmd_obstacles = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzserver.launch.py'])
-        ),
-        condition=IfCondition(obstacles),
-        launch_arguments={'world': world_obstacles}.items()
-    )
+    gzserver_cmd = OpaqueFunction(function=gazebo_world)
 
     gzclient_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -215,6 +262,8 @@ def generate_launch_description():
     # Declare the launch options
     ld.add_action(declare_num_robots_cmd)
     ld.add_action(declare_visualise_sensors_cmd)
+    ld.add_action(declare_odometry_source_cmd)
+    ld.add_action(declare_sensor_noise_cmd)
     ld.add_action(declare_use_rviz_cmd)
     ld.add_action(declare_rviz_config_file_cmd)
     ld.add_action(declare_obstacles_cmd)
@@ -226,7 +275,6 @@ def generate_launch_description():
 
     # Add the commands to the launch description
     ld.add_action(gzserver_cmd)
-    ld.add_action(gzserver_cmd_obstacles)
     ld.add_action(gzclient_cmd)
 
     ld.add_action(start_tf_relay_cmd)

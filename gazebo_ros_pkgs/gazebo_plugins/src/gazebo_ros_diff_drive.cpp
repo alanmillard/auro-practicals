@@ -592,6 +592,14 @@ void GazeboRosDiffDrivePrivate::UpdateOdometryEncoder(const gazebo::common::Time
   double vl = joints_[LEFT]->GetVelocity(0);
   double vr = joints_[RIGHT]->GetVelocity(0);
 
+  double velocity_threshold = 0.001;
+
+  if(fabs(vl) < velocity_threshold)
+    vl = 0.0;
+  
+  if(fabs(vr) < velocity_threshold)
+    vr = 0.0;
+
   vl *= encoder_bias_left_;
   vr *= encoder_bias_right_;
 

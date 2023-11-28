@@ -21,16 +21,19 @@ def generate_launch_description():
         ),
         launch_arguments={'num_robots': '1',
                           'visualise_sensors': 'false',
+                          'odometry_source': 'ENCODER',
+                          'sensor_noise': 'false',
                           'use_rviz': 'true',
+                          'rviz_config': rviz_config,
                           'obstacles': 'true',
                           'item_manager': 'true',
                           'random_seed': '0',
                           'use_nav2': 'True',
-                          'rviz_config': rviz_config,
                           'map': map,
                           'params': params,
+                          # 'extra_gazebo_args': '--verbose',
                           }.items()
-    )    
+    )
 
     robot_controller_cmd = Node(
         package='solution',

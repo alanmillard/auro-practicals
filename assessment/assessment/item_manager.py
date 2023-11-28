@@ -180,42 +180,54 @@ class ItemManager(Node):
 
 
     def spawn_item(self, name, x, y, colour):
-        if self.spawn_entity_client.wait_for_service():
-            request = SpawnEntity.Request()
-            request.name = name
-            request.xml = self.item_models[colour]
-            request.initial_pose.position.x = x
-            request.initial_pose.position.y = y
-            request.reference_frame = "world"
-            self.item_counter += 1
-            return self.spawn_entity_client.call(request)
+
+        while not self.spawn_entity_client.wait_for_service():
+            pass
+
+        request = SpawnEntity.Request()
+        request.name = name
+        request.xml = self.item_models[colour]
+        request.initial_pose.position.x = x
+        request.initial_pose.position.y = y
+        request.reference_frame = "world"
+        self.item_counter += 1
+        return self.spawn_entity_client.call_async(request)
 
 
     def get_model_list(self):
-        if self.get_model_list_client.wait_for_service():
-            request = GetModelList.Request()
-            return self.get_model_list_client.call(request)
+
+        while not self.get_model_list_client.wait_for_service():
+            pass
+
+        request = GetModelList.Request()
+        return self.get_model_list_client.call_async(request)
 
 
     def get_entity_state(self, name):
-        if self.get_entity_state_client.wait_for_service():
-            request = GetEntityState.Request()
-            request.name = name
-            return self.get_entity_state_client.call(request)
+
+        while not self.get_entity_state_client.wait_for_service():
+            pass
+
+        request = GetEntityState.Request()
+        request.name = name
+        return self.get_entity_state_client.call_async(request)
     
 
     def set_entity_state(self, name, reference_frame, pose):
-        if self.set_entity_state_client.wait_for_service():
-            state = EntityState()
-            state.name = name
-            state.pose = pose
-            state.twist = Twist()
-            state.reference_frame = reference_frame
 
-            request = SetEntityState.Request()
-            request.state = state
-            
-            return self.set_entity_state_client.call(request)
+        while not self.set_entity_state_client.wait_for_service():
+            pass
+
+        state = EntityState()
+        state.name = name
+        state.pose = pose
+        state.twist = Twist()
+        state.reference_frame = reference_frame
+
+        request = SetEntityState.Request()
+        request.state = state
+        
+        return self.set_entity_state_client.call_async(request)
     
 
     def control_loop(self):
@@ -254,9 +266,14 @@ class ItemManager(Node):
 
                     item_id = "item" + str(self.item_counter)
                     self.items[item_id] = Item(x, y, colour, cluster_id)
-                    self.spawn_item(item_id, x, y, colour)
 
-        model_list_msg = self.get_model_list()
+                    future = self.spawn_item(item_id, x, y, colour)
+                    self.executor.spin_until_future_complete(future)
+
+        future = self.get_model_list()
+        self.executor.spin_until_future_complete(future)
+
+        model_list_msg = future.result()
 
         for model_name in model_list_msg.model_names:
             if "robot" in model_name:
@@ -265,7 +282,10 @@ class ItemManager(Node):
 
         for robot_id, robot in self.robots.items():
 
-            entity_state_msg = self.get_entity_state(robot_id)
+            future = self.get_entity_state(robot_id)
+            self.executor.spin_until_future_complete(future)
+
+            entity_state_msg = future.result()
             robot_position = entity_state_msg.state.pose.position
 
             robot.x = round(robot_position.x, 2)
@@ -300,7 +320,9 @@ class ItemManager(Node):
                             pose = Pose()
                             pose.position.x = self.items[robot.item_held].x
                             pose.position.y = self.items[robot.item_held].y
-                            self.set_entity_state(robot.item_held, 'world', pose)
+
+                            future = self.set_entity_state(robot.item_held, 'world', pose)
+                            self.executor.spin_until_future_complete(future)
 
                             # Swap cluster membership
                             item_held_cluster_id = self.items[robot.item_held].cluster_id
@@ -329,7 +351,9 @@ class ItemManager(Node):
                     pose = Pose()
                     pose.position.x = self.items[robot.item_held].x
                     pose.position.y = self.items[robot.item_held].y
-                    self.set_entity_state(robot.item_held, 'world', pose)
+                    
+                    future = self.set_entity_state(robot.item_held, 'world', pose)
+                    self.executor.spin_until_future_complete(future)
 
                     robot.item_held = None
                     robot.previous_item_held = None
@@ -349,7 +373,9 @@ class ItemManager(Node):
                         pose.position.x = self.items[robot.item_held].x
                         pose.position.y = self.items[robot.item_held].y
                         pose.position.z = 0.15
-                        self.set_entity_state(robot.item_held, robot_id, pose)
+
+                        future = self.set_entity_state(robot.item_held, robot_id, pose)
+                        self.executor.spin_until_future_complete(future)
 
                     except TransformException as e:
                         self.get_logger().info(f"{e}")
@@ -410,6 +436,7 @@ def main(args=sys.argv):
     except ExternalShutdownException:
         sys.exit(1)
     finally:
+        executor.shutdown()
         node.destroy_node()
         rclpy.try_shutdown()
 

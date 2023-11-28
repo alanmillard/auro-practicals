@@ -7,6 +7,8 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
+    rviz_config = PathJoinSubstitution([FindPackageShare('assessment'), 'rviz', 'namespaced.rviz'])
+
     assessment_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -17,10 +19,15 @@ def generate_launch_description():
         ),
         launch_arguments={'num_robots': '1',
                           'visualise_sensors': 'false',
+                          'odometry_source': 'ENCODER',
+                          'sensor_noise': 'false',
                           'use_rviz': 'true',
+                          'rviz_config': rviz_config,
                           'obstacles': 'true',
                           'item_manager': 'true',
                           'random_seed': '0',
+                          'use_nav2': 'false',
+                          # 'extra_gazebo_args': '--verbose',
                           }.items()
     )
 
