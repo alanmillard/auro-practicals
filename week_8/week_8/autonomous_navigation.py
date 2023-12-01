@@ -43,6 +43,21 @@ class AutonomousNavigation(Node):
         self.distance = 0.0
         self.angle = 0.0
 
+        self.current_goal = 0
+        self.potential_goals = []
+
+        self.potential_goals.append(Point(x = 0.0, y = 0.0))
+
+        self.potential_goals.append(Point(x = 0.0, y = -2.0))
+        self.potential_goals.append(Point(x = 0.0, y = -1.0))
+        self.potential_goals.append(Point(x = 0.0, y =  1.0))
+        self.potential_goals.append(Point(x = 0.0, y =  2.0))
+
+        self.potential_goals.append(Point(x = -2.0, y = 0.0))
+        self.potential_goals.append(Point(x = -1.0, y = 0.0))
+        self.potential_goals.append(Point(x =  1.0, y = 0.0))
+        self.potential_goals.append(Point(x =  2.0, y = 0.0))
+
         self.navigator = BasicNavigator()
 
         initial_pose = PoseStamped()
@@ -98,7 +113,7 @@ class AutonomousNavigation(Node):
 
         time_difference = self.get_clock().now() - self.previous_time
 
-        if time_difference > Duration(seconds = 600):
+        if time_difference > Duration(seconds = 30):
             self.navigator.cancelTask()
             self.previous_time = self.get_clock().now()
             self.get_logger().info(f"Homing...")
@@ -110,31 +125,29 @@ class AutonomousNavigation(Node):
 
             case State.SET_GOAL:
 
-                potential_goals = []
+                if len(self.potential_goals) == 0:
+                    self.state = State.HOMING
+                    return
 
-                potential_goals.append(Point(x = 0.0, y = 0.0))
-
-                potential_goals.append(Point(x = 0.0, y = -2.0))
-                potential_goals.append(Point(x = 0.0, y = -1.0))
-                potential_goals.append(Point(x = 0.0, y =  1.0))
-                potential_goals.append(Point(x = 0.0, y =  2.0))
-
-                potential_goals.append(Point(x = -2.0, y = 0.0))
-                potential_goals.append(Point(x = -1.0, y = 0.0))
-                potential_goals.append(Point(x =  1.0, y = 0.0))
-                potential_goals.append(Point(x =  2.0, y = 0.0))
-
+                self.current_goal = random.randint(0, len(self.potential_goals) - 1)
                 angle = random.uniform(-180, 180)
 
                 goal_pose = PoseStamped()
                 goal_pose.header.frame_id = 'map'
-                goal_pose.header.stamp = self.get_clock().now().to_msg()
-                goal_pose.pose.position = random.choice(potential_goals)
+                goal_pose.header.stamp = self.get_clock().now().to_msg()                
+                goal_pose.pose.position = self.potential_goals[self.current_goal]
+
+                del self.potential_goals[self.current_goal]
 
                 (goal_pose.pose.orientation.x,
                  goal_pose.pose.orientation.y,
                  goal_pose.pose.orientation.z,
                  goal_pose.pose.orientation.w) = quaternion_from_euler(0, 0, math.radians(angle), axes='sxyz')
+                
+                self.get_logger().info(f"Remaining goals:")
+
+                for goal in self.potential_goals:
+                    self.get_logger().info(f"{goal}")
                 
                 self.get_logger().info(f"Navigating to: ({goal_pose.pose.position.x:.2f}, {goal_pose.pose.position.y:.2f}), {angle:.2f} degrees")
 
@@ -248,6 +261,7 @@ class AutonomousNavigation(Node):
 
                 if self.distance < 0.1:
                     self.navigator.spin(spin_dist=math.radians(180), time_allowance=10)
+                    self.previous_time = self.get_clock().now()
                     self.get_logger().info(f"Made it home!")
                     self.state = State.SPINNING
                     return
@@ -276,7 +290,12 @@ class AutonomousNavigation(Node):
                     self.get_logger().info(f"angle (degrees): {math.degrees(angle):.2f}")
 
                     msg = Twist()
-                    msg.linear.x = 0.3
+
+                    if math.fabs(angle) > math.radians(15):
+                        msg.linear.x = 0.0
+                    else:
+                        msg.linear.x = 0.3 * distance
+                        
                     msg.angular.z = 0.5 * angle
 
                     self.cmd_vel_publisher.publish(msg)
