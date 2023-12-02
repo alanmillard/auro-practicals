@@ -11,6 +11,7 @@ from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node, SetParameter
 
 import xml.etree.ElementTree as ET
+import yaml
 
 package_name = 'assessment'
 launch_file_dir = PathJoinSubstitution([FindPackageShare(package_name), 'launch'])
@@ -85,36 +86,16 @@ def group_action(context : LaunchContext):
     with open(robot_sdf, 'w') as f:
         tree.write(f, encoding='unicode')
 
-    robots_list = {}
+    yaml_path = os.path.join(get_package_share_directory(package_name), 'config', 'initial_poses.yaml')
 
-    match num_robots:
-        case 1:
-            robots_list["robot1"] = {}
-            robots_list["robot1"]["y"] =  0.0
-        case 2:
-            robots_list["robot1"] = {}
-            robots_list["robot1"]["y"] =  1.0
+    with open(yaml_path, 'r') as f:
+        configuration = yaml.safe_load(f)
 
-            robots_list["robot2"] = {}
-            robots_list["robot2"]["y"] = -1.0
-        case _:
-            robots_list["robot1"] = {}
-            robots_list["robot1"]["y"] =  2.0
-
-            robots_list["robot2"] = {}
-            robots_list["robot2"]["y"] =  0.0
-
-            robots_list["robot3"] = {}
-            robots_list["robot3"]["y"] = -2.0
-
-    for robot_name, robot in robots_list.items():
-        robot["x"] = -3.5
-        robot["yaw"] = 0.0
+    initial_poses = configuration[num_robots]
 
     bringup_cmd_group = []
 
-    for robot_name in robots_list:
-        init_pose = robots_list[robot_name]
+    for robot_name, init_pose in initial_poses.items():
         group = GroupAction([
             LogInfo(msg=['Launching namespace=', robot_name, ' init_pose=', str(init_pose)]),
 
