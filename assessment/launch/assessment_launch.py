@@ -8,7 +8,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node, SetParameter
+from launch_ros.actions import Node, SetUseSimTime, SetRemap, PushRosNamespace
 
 import xml.etree.ElementTree as ET
 import yaml
@@ -97,43 +97,42 @@ def group_action(context : LaunchContext):
 
     for robot_name, init_pose in initial_poses.items():
         group = GroupAction([
+
+            PushRosNamespace(robot_name),
+            SetRemap('/tf', 'tf'),
+            SetRemap('/tf_static', 'tf_static'),
+
             LogInfo(msg=['Launching namespace=', robot_name, ' init_pose=', str(init_pose)]),
 
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution([launch_file_dir, 'rviz_launch.py'])),
                 condition=IfCondition(context.launch_configurations['use_rviz']),
-                launch_arguments={'namespace': TextSubstitution(text=robot_name),
-                                  'rviz_config': context.launch_configurations['rviz_config']}.items()),
+                launch_arguments={'rviz_config': context.launch_configurations['rviz_config']}.items()),
 
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(PathJoinSubstitution([
                     launch_file_dir,
                     'spawn_robot_launch.py'])),
-                launch_arguments={'namespace': robot_name,
-                                  'use_nav2': context.launch_configurations['use_nav2'],
+                launch_arguments={'use_nav2': context.launch_configurations['use_nav2'],
                                   'map': context.launch_configurations['map'],
                                   'params_file': context.launch_configurations['params_file'],
                                   'x_pose': TextSubstitution(text=str(init_pose['x'])),
                                   'y_pose': TextSubstitution(text=str(init_pose['y'])),
                                   'yaw': TextSubstitution(text=str(init_pose['yaw'])),
-                                  'robot_name': TextSubstitution(text=robot_name),
                                   'robot_sdf': robot_sdf}.items()),
             Node(
                 package=package_name,
                 executable='item_sensor',
-                output='screen',
-                namespace=robot_name),
+                output='screen'),
             Node(
                 package=package_name,
                 executable='home_zone_sensor',
-                output='screen',
-                namespace=robot_name),
+                output='screen'),
             Node(
                 package=package_name,
                 executable='robot_sensor',
-                output='screen',
-                namespace=robot_name)
+                output='screen')
         ])
     
         bringup_cmd_group.append(group)
@@ -240,7 +239,7 @@ def generate_launch_description():
         
     ld = LaunchDescription()
 
-    ld.add_action(SetParameter(name='use_sim_time', value=True))
+    ld.add_action(SetUseSimTime(True))
 
     # Declare the launch options
     ld.add_action(declare_num_robots_cmd)

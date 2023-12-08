@@ -3,11 +3,11 @@ from ament_index_python.packages import get_package_share_directory
 import yaml
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, GroupAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node, SetParameter
+from launch_ros.actions import Node, SetUseSimTime, SetRemap, PushRosNamespace
 
 def generate_launch_description():
 
@@ -53,19 +53,26 @@ def generate_launch_description():
 
         robot_name = 'robot' + str(robot_number)
 
-        node = Node(
-            package='solution',
-            executable='robot_controller',
-            output='screen',
-            namespace=robot_name,
-            parameters=[initial_poses[robot_name]])
+        group = GroupAction([
 
-        robot_controller_cmd.append(node)
+            PushRosNamespace(robot_name),
+            SetRemap('/tf', 'tf'),
+            SetRemap('/tf_static', 'tf_static'),
+
+            Node(
+                package='solution',
+                executable='robot_controller',
+                output='screen',
+                parameters=[initial_poses[robot_name]]),
+
+        ])
+
+        robot_controller_cmd.append(group)
 
 
     ld = LaunchDescription()
 
-    ld.add_action(SetParameter(name='use_sim_time', value=True))
+    ld.add_action(SetUseSimTime(True))
 
     ld.add_action(assessment_cmd)
 
