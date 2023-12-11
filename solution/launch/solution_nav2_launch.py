@@ -3,15 +3,17 @@ from ament_index_python.packages import get_package_share_directory
 import yaml
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, GroupAction
+from launch.actions import IncludeLaunchDescription, GroupAction, Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node, SetUseSimTime, SetRemap, PushRosNamespace
+from launch_ros.actions import Node, SetUseSimTime, SetRemap, PushRosNamespace, RosTimer
 
 def generate_launch_description():
 
     num_robots = 1
+    random_seed = 0
+    experiment_duration = 300.0
     rviz_config = PathJoinSubstitution([FindPackageShare('assessment'), 'rviz', 'namespaced_nav2.rviz'])
     map = PathJoinSubstitution([FindPackageShare('assessment'), 'maps', 'assessment_world.yaml'])
     params = PathJoinSubstitution([FindPackageShare('assessment'), 'params', 'nav2_params_namespaced.yaml'])
@@ -39,7 +41,7 @@ def generate_launch_description():
                           'rviz_config': rviz_config,
                           'obstacles': 'true',
                           'item_manager': 'true',
-                          'random_seed': '0',
+                          'random_seed': str(random_seed),
                           'use_nav2': 'True',
                           'map': map,
                           'params': params,
@@ -65,10 +67,27 @@ def generate_launch_description():
                 output='screen',
                 parameters=[initial_poses[robot_name]]),
 
+            # Node(
+            #     package='turtlebot3_gazebo',
+            #     executable='turtlebot3_drive',
+            #     output='screen'),
+
         ])
 
         robot_controller_cmd.append(group)
 
+    data_logger_cmd = Node(
+        package='solution',
+        executable='data_logger',
+        output='screen',
+        arguments=['--filename', 'data_log_' + str(random_seed) + '.csv'])
+
+    timeout_cmd = RosTimer(                                         
+            period = experiment_duration,
+            actions = [                                                       
+                Shutdown(reason="Experiment timeout reached")     
+            ],
+        )
 
     ld = LaunchDescription()
 
@@ -78,5 +97,9 @@ def generate_launch_description():
 
     for cmd in robot_controller_cmd:
         ld.add_action(cmd)
+
+    ld.add_action(data_logger_cmd)
+
+    ld.add_action(timeout_cmd)
 
     return ld
