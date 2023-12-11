@@ -6,10 +6,12 @@ import random
 
 import rclpy
 from rclpy.node import Node
-from rclpy.executors import ExternalShutdownException
+from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.duration import Duration
 
 from geometry_msgs.msg import PoseStamped, Point, Twist
+from nav_msgs.msg import Odometry
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
 from tf2_ros import TransformException
@@ -31,9 +33,20 @@ class State(Enum):
 class AutonomousNavigation(Node):
 
     def __init__(self):
-        super().__init__('autonomous_navigation')
+        super().__init__('autonomous_navigation_multithreaded')
 
         self.state = State.SET_GOAL
+
+        subscriber_callback_group = MutuallyExclusiveCallbackGroup()
+        publisher_callback_group = MutuallyExclusiveCallbackGroup()
+        timer_callback_group = MutuallyExclusiveCallbackGroup()
+
+        self.odom_subscriber = self.create_subscription(
+            Odometry,
+            'odom',
+            self.odom_callback,
+            10,
+            callback_group=subscriber_callback_group)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -75,12 +88,16 @@ class AutonomousNavigation(Node):
 
         self.navigator.waitUntilNav2Active()
 
-        self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
+        self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10, callback_group=publisher_callback_group)
         
         self.timer_period = 0.1 # 100 milliseconds = 10 Hz
-        self.timer = self.create_timer(self.timer_period, self.control_loop)
+        self.timer = self.create_timer(self.timer_period, self.control_loop, callback_group=timer_callback_group)
 
         self.previous_time = self.get_clock().now()
+
+
+    def odom_callback(self, msg):
+        self.get_logger().info(f"odom: ({msg.pose.pose.position.x:.2f}, {msg.pose.pose.position.y:.2f})")
 
 
     def control_loop(self):
@@ -319,13 +336,17 @@ def main(args=None):
 
     node = AutonomousNavigation()
 
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     except ExternalShutdownException:
         sys.exit(1)
     finally:
+        executor.shutdown()
         node.destroy_node()
         rclpy.try_shutdown()
 
