@@ -44,7 +44,7 @@ def generate_launch_description():
                           'random_seed': str(random_seed),
                           'use_nav2': 'True',
                           'map': map,
-                          'params': params,
+                          'params_file': params,
                           # 'extra_gazebo_args': '--verbose',
                           }.items()
     )
