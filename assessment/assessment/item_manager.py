@@ -128,8 +128,8 @@ class ItemManager(Node):
 
         self.spawn_entity_client = self.create_client(SpawnEntity, '/spawn_entity', callback_group=client_callback_group)
         self.get_model_list_client = self.create_client(GetModelList, '/get_model_list', callback_group=client_callback_group)
-        self.get_entity_state_client = self.create_client(GetEntityState, '/gazebo/get_entity_state', callback_group=client_callback_group)
-        self.set_entity_state_client = self.create_client(SetEntityState, '/gazebo/set_entity_state', callback_group=client_callback_group)
+        self.get_entity_state_client = self.create_client(GetEntityState, '/get_entity_state', callback_group=client_callback_group)
+        self.set_entity_state_client = self.create_client(SetEntityState, '/set_entity_state', callback_group=client_callback_group)
 
         self.timer = self.create_timer(0.1, self.control_loop, callback_group=timer_callback_group)
 
@@ -179,7 +179,7 @@ class ItemManager(Node):
                 return x, y
 
 
-    def spawn_item(self, name, x, y, colour):
+    def spawn_item(self, name, x, y, colour, z = 0.0):
 
         while not self.spawn_entity_client.wait_for_service():
             pass
@@ -189,6 +189,7 @@ class ItemManager(Node):
         request.xml = self.item_models[colour]
         request.initial_pose.position.x = x
         request.initial_pose.position.y = y
+        request.initial_pose.position.z = z
         request.reference_frame = "world"
         self.item_counter += 1
         return self.spawn_entity_client.call_async(request)
@@ -267,8 +268,13 @@ class ItemManager(Node):
                     item_id = "item" + str(self.item_counter)
                     self.items[item_id] = Item(x, y, colour, cluster_id)
 
+                    self.get_logger().info(f'Spawning {item_id} of {colour} at ({x:.2f}, {y:.2f})')
+
                     future = self.spawn_item(item_id, x, y, colour)
                     self.executor.spin_until_future_complete(future)
+
+        future = self.spawn_item("ready", 0.0, 0.0, Colour.RED, z=-0.5)
+        self.executor.spin_until_future_complete(future)
 
         future = self.get_model_list()
         self.executor.spin_until_future_complete(future)

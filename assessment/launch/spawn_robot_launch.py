@@ -31,13 +31,21 @@ def bringup_actions(context : LaunchContext):
         output='screen',
         parameters=[{'robot_description': robot_description}])
 
+    wait_for_items = eval(context.launch_configurations['wait_for_items'].lower().capitalize())
+
+    if wait_for_items == True:
+        wait_entity = 'ready'
+    else:
+        wait_entity = ''
+
     robot_name = context.launch_configurations['ros_namespace'].strip('/')
 
     start_gazebo_spawner_cmd = Node(
-        package='gazebo_ros',
+        package='gazebo_ros',        
         executable='spawn_entity.py',
         output='screen',
         arguments=[
+            '-wait', wait_entity,
             '-entity', robot_name,
             '-file', context.launch_configurations['robot_sdf'],
             '-robot_namespace', robot_name,
@@ -75,6 +83,7 @@ def generate_launch_description():
     pitch = LaunchConfiguration('pitch')
     yaw = LaunchConfiguration('yaw')
     robot_sdf = LaunchConfiguration('robot_sdf')
+    wait_for_items = LaunchConfiguration('wait_for_items')
 
     declare_x_pose_cmd = DeclareLaunchArgument(
         'x_pose',
@@ -126,6 +135,11 @@ def generate_launch_description():
         default_value=os.path.join(get_package_share_directory(package_name), 'params', 'nav2_params_namespaced.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
     
+    declare_wait_for_items_cmd = DeclareLaunchArgument(
+        'wait_for_items',
+        default_value='False',
+        description='Whether to wait for every item to spawn before spawning any robots')
+    
     bringup_cmd = OpaqueFunction(function=bringup_actions)
 
     # Create the launch description and populate
@@ -142,6 +156,7 @@ def generate_launch_description():
     ld.add_action(declare_use_nav2_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
+    ld.add_action(declare_wait_for_items_cmd)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(bringup_cmd)

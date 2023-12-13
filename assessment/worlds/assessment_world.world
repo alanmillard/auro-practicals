@@ -240,9 +240,6 @@
     </model>
 
     <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
-      <ros>
-        <namespace>/gazebo</namespace>
-      </ros>
       <update_rate>0.1</update_rate>
     </plugin>
 

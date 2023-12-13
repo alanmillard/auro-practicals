@@ -7,7 +7,7 @@ from launch.actions import IncludeLaunchDescription, GroupAction, Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node, SetUseSimTime, SetRemap, PushRosNamespace, RosTimer
+from launch_ros.actions import Node, SetParameter, SetRemap, PushRosNamespace, RosTimer
 
 def generate_launch_description():
 
@@ -41,6 +41,9 @@ def generate_launch_description():
                           'item_manager': 'true',
                           'random_seed': str(random_seed),
                           'use_nav2': 'false',
+                          'headless': 'false',
+                          'limit_real_time_factor': 'true',
+                          'wait_for_items': 'false',
                           # 'extra_gazebo_args': '--verbose',
                           }.items()
     )
@@ -60,6 +63,10 @@ def generate_launch_description():
             Node(
                 package='solution',
                 executable='robot_controller',
+                # prefix=['xfce4-terminal --tab --execute'], # Opens in new tab
+                # prefix=['xfce4-terminal --execute'], # Opens in new window
+                # prefix=['gnome-terminal --tab --execute'], # Opens in new tab
+                # prefix=['gnome-terminal --window --execute'], # Opens in new window                
                 output='screen',
                 parameters=[initial_poses[robot_name]]),
 
@@ -87,7 +94,7 @@ def generate_launch_description():
 
     ld = LaunchDescription()
 
-    ld.add_action(SetUseSimTime(True))
+    ld.add_action(SetParameter(name='use_sim_time', value=True))
 
     ld.add_action(assessment_cmd)
 
