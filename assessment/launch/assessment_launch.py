@@ -99,6 +99,11 @@ def group_action(context : LaunchContext):
 
     initial_poses = configuration[num_robots]
 
+    with open(context.launch_configurations['rviz_windows'], 'r') as f:
+        configuration = yaml.safe_load(f)
+
+    rviz_windows = configuration[num_robots]
+
     bringup_cmd_group = []
 
     for robot_name, init_pose in initial_poses.items():
@@ -114,7 +119,11 @@ def group_action(context : LaunchContext):
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution([launch_file_dir, 'rviz_launch.py'])),
                 condition=IfCondition(context.launch_configurations['use_rviz']),
-                launch_arguments={'rviz_config': context.launch_configurations['rviz_config']}.items()),
+                launch_arguments={'rviz_config': context.launch_configurations['rviz_config'],
+                                  'window_x': str(rviz_windows[robot_name]['window_x']),
+                                  'window_y': str(rviz_windows[robot_name]['window_y']),
+                                  'window_width': str(rviz_windows[robot_name]['window_width']),
+                                  'window_height': str(rviz_windows[robot_name]['window_height'])}.items()),
 
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(PathJoinSubstitution([
@@ -153,6 +162,7 @@ def generate_launch_description():
     sensor_noise = LaunchConfiguration('sensor_noise')
     use_rviz = LaunchConfiguration('use_rviz')
     rviz_config_file = LaunchConfiguration('rviz_config')
+    rviz_windows = LaunchConfiguration('rviz_windows')
     obstacles = LaunchConfiguration('obstacles')
     item_manager = LaunchConfiguration('item_manager')
     random_seed = LaunchConfiguration('random_seed')
@@ -201,7 +211,12 @@ def generate_launch_description():
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
         'rviz_config',
         default_value=PathJoinSubstitution([FindPackageShare(package_name), 'rviz', 'namespaced.rviz']),
-        description='Full path to the RViz config file to use')    
+        description='Full path to the RViz config file to use')
+    
+    declare_rviz_windows_cmd = DeclareLaunchArgument(
+        'rviz_windows',
+        default_value=PathJoinSubstitution([FindPackageShare(package_name), 'config', 'rviz_windows.yaml']),
+        description='Full path to the RViz windows YAML file to use')        
     
     declare_obstacles_cmd = DeclareLaunchArgument(
         'obstacles',
@@ -273,6 +288,7 @@ def generate_launch_description():
     ld.add_action(declare_sensor_noise_cmd)
     ld.add_action(declare_use_rviz_cmd)
     ld.add_action(declare_rviz_config_file_cmd)
+    ld.add_action(declare_rviz_windows_cmd)
     ld.add_action(declare_obstacles_cmd)
     ld.add_action(declare_item_manager_cmd)
     ld.add_action(declare_random_seed_cmd)

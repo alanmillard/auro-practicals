@@ -14,12 +14,17 @@ class DataLogger(Node):
         super().__init__('data_logger')
 
         parser = argparse.ArgumentParser()
-        group = parser.add_mutually_exclusive_group(required=True)
+        group = parser.add_argument_group()
+        group.add_argument('--path', type=str, metavar='PATH', help='Path')
         group.add_argument('--filename', type=str, metavar='FILENAME', help='Filename')
+        group.add_argument('--random_seed', type=str, metavar='RANDOM_SEED', help='Random seed')
         self.args = parser.parse_args(args[1:])
 
+        full_filepath = self.args.path + self.args.filename + '_' + self.args.random_seed + '.csv'
+        self.get_logger().info(f"Logging data to file: {full_filepath}")
+
         self.counter = 0
-        self.log_file = open(self.args.filename, 'w')
+        self.log_file = open(full_filepath, 'w')
 
         self.log_file.write('counter,')
         self.log_file.write('red_count,green_count,blue_count,total_count,')

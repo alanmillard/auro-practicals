@@ -4,7 +4,6 @@
 
 from launch import LaunchDescription, LaunchContext
 from launch.actions import DeclareLaunchArgument, EmitEvent, RegisterEventHandler, OpaqueFunction
-from launch.conditions import LaunchConfigurationEquals
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -23,22 +22,11 @@ def rviz_action(context : LaunchContext):
             replacements={'<robot_namespace>': namespace})
     
     namespaced_rviz_config_file = ReplaceString(
-            condition=LaunchConfigurationEquals('ros_namespace', '/robot1'),
             source_file=namespaced_rviz_config_file,
-            replacements={'<window_x>': '0',
-                          '<window_y>': '720'})
-    
-    namespaced_rviz_config_file = ReplaceString(
-            condition=LaunchConfigurationEquals('ros_namespace', '/robot2'),
-            source_file=namespaced_rviz_config_file,
-            replacements={'<window_x>': '1280',
-                          '<window_y>': '720'})
-    
-    namespaced_rviz_config_file = ReplaceString(
-            condition=LaunchConfigurationEquals('ros_namespace', '/robot3'),
-            source_file=namespaced_rviz_config_file,
-            replacements={'<window_x>': '1280',
-                          '<window_y>': '0'})
+            replacements={'<window_x>': context.launch_configurations['window_x'],
+                          '<window_y>': context.launch_configurations['window_y'],
+                          '<window_width>': context.launch_configurations['window_width'],
+                          '<window_height>': context.launch_configurations['window_height']})
 
     start_namespaced_rviz_cmd = Node(
         package='rviz2',
@@ -59,11 +47,35 @@ def generate_launch_description():
 
     # Create the launch configuration variables
     rviz_config_file = LaunchConfiguration('rviz_config')
+    window_x = LaunchConfiguration('window_x')
+    window_y = LaunchConfiguration('window_y')
+    window_width = LaunchConfiguration('window_width')
+    window_height = LaunchConfiguration('window_height')
 
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
         'rviz_config',
         default_value=PathJoinSubstitution([FindPackageShare(package_name), 'rviz', 'namespaced.rviz']),
         description='Full path to the RViz config file to use')
+    
+    declare_window_x_cmd = DeclareLaunchArgument(
+        'window_x',
+        default_value='0',
+        description='RViz window X offset from top-left corner of screen')
+    
+    declare_window_y_cmd = DeclareLaunchArgument(
+        'window_x',
+        default_value='0',
+        description='RViz window Y offset from top-left corner of screen')
+    
+    declare_window_width_cmd = DeclareLaunchArgument(
+        'window_width',
+        default_value='1280',
+        description='RViz window width')
+    
+    declare_window_height_cmd = DeclareLaunchArgument(
+        'window_height',
+        default_value='720',
+        description='RViz window height')    
     
     rviz_cmd = OpaqueFunction(function=rviz_action)
 
@@ -72,6 +84,10 @@ def generate_launch_description():
 
     # Declare the launch options
     ld.add_action(declare_rviz_config_file_cmd)
+    ld.add_action(declare_window_x_cmd)
+    ld.add_action(declare_window_y_cmd)
+    ld.add_action(declare_window_width_cmd)
+    ld.add_action(declare_window_height_cmd)
 
     ld.add_action(rviz_cmd)
 
