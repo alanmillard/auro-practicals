@@ -116,8 +116,8 @@ def generate_launch_description():
                           'use_nav2': 'false',
                           'headless': 'false',
                           'limit_real_time_factor': 'true',
-                          'wait_for_items': 'false',
-                          # 'extra_gazebo_args': '--verbose',
+                          'wait_for_items': 'true',
+                          'gazebo_verbose': 'false'
                           }.items()
     )
 

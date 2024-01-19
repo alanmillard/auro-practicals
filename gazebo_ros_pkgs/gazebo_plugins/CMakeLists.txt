@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.5)
 project(gazebo_plugins)
 
+set(CMAKE_CXX_STANDARD 17)
+message(STATUS "CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD}")
+
 # Default to C++14
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
+# if(NOT CMAKE_CXX_STANDARD)
+#   set(CMAKE_CXX_STANDARD 14)
+# endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # we dont use add_compile_options with pedantic in message packages
   # because the Python C extensions dont comply with it
@@ -38,6 +41,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(trajectory_msgs REQUIRED)
+find_package(assessment_interfaces REQUIRED)
 
 link_directories(${gazebo_dev_LIBRARY_DIRS})
 
@@ -74,6 +78,19 @@ if(ENABLE_PROFILER)
   target_link_libraries(gazebo_ros_diff_drive ${ignition-common3_LIBRARIES})
 endif()
 
+# gazebo_ros_item_manager
+add_library(gazebo_ros_item_manager SHARED
+  src/gazebo_ros_item_manager.cpp
+)
+target_include_directories(gazebo_ros_item_manager PUBLIC include)
+ament_target_dependencies(gazebo_ros_item_manager
+  "gazebo_dev"
+  "gazebo_ros"
+  "rclcpp"
+  "assessment_interfaces"
+)
+ament_export_libraries(gazebo_ros_item_manager)
+
 ament_export_include_directories(include)
 ament_export_dependencies(rclcpp)
 ament_export_dependencies(gazebo_dev)
@@ -100,6 +117,7 @@ install(DIRECTORY include/
 
 install(TARGETS
     gazebo_ros_diff_drive
+    gazebo_ros_item_manager
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)

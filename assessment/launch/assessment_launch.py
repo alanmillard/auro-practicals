@@ -21,6 +21,7 @@ def gazebo_world(context : LaunchContext):
 
     obstacles = eval(context.launch_configurations['obstacles'].lower().capitalize())
     limit_real_time_factor = eval(context.launch_configurations['limit_real_time_factor'].lower().capitalize())
+    item_manager = eval(context.launch_configurations['item_manager'].lower().capitalize())
 
     world_path = os.path.join(get_package_share_directory(package_name), 'worlds', 'assessment_world.world')
     tree = ET.parse(world_path)
@@ -37,6 +38,12 @@ def gazebo_world(context : LaunchContext):
             for element in node.iter():
                 element.text = "0.0"
 
+    if item_manager == False:
+        for world in root.findall('.//world'):
+            for plugin in world.findall('.//plugin'):
+                if plugin.attrib['name'] == "gazebo_ros_item_manager":
+                    world.remove(plugin)
+
     world = os.path.join(get_package_share_directory(package_name), 'worlds', 'simulation_world.world')
 
     with open(world, 'w') as f:
@@ -44,9 +51,12 @@ def gazebo_world(context : LaunchContext):
 
     gzserver_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzserver.launch.py'])
+            PathJoinSubstitution([launch_file_dir, 'gzserver.launch.py'])
         ),
-        launch_arguments={'world': world, 'force_system': 'False'}.items()
+        launch_arguments={'verbose': context.launch_configurations['gazebo_verbose'],
+                          'seed': context.launch_configurations['random_seed'],
+                          'world': world,
+                          'force_system': 'false'}.items()
     )
 
     return [gzserver_cmd]
@@ -172,6 +182,7 @@ def generate_launch_description():
     headless = LaunchConfiguration('headless')
     limit_real_time_factor = LaunchConfiguration('limit_real_time_factor')
     wait_for_items = LaunchConfiguration('wait_for_items')
+    gazebo_verbose = LaunchConfiguration('gazebo_verbose')
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
@@ -253,13 +264,19 @@ def generate_launch_description():
         default_value='False',
         description='Whether to wait for every item to spawn before spawning any robots')
     
+    declare_gazebo_verbose_cmd = DeclareLaunchArgument(
+        'gazebo_verbose',
+        default_value='False',
+        description='Enable/disable verbose output for gzserver and gzclient')
+    
     gzserver_cmd = OpaqueFunction(function=gazebo_world)
 
     gzclient_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([pkg_gazebo_ros, 'launch', 'gzclient.launch.py'])
         ),
-        condition=UnlessCondition(headless)
+        condition=UnlessCondition(headless),
+        launch_arguments={'verbose': gazebo_verbose}.items(),
     )
 
     start_tf_relay_cmd = Node(
@@ -267,13 +284,6 @@ def generate_launch_description():
         executable='relay',
         output='screen',
         arguments=['robot', num_robots])
-
-    start_item_manager_cmd = Node(
-        package=package_name,
-        executable='item_manager',
-        output='screen',
-        condition=IfCondition(item_manager),
-        arguments=['--random_seed', random_seed])
 
     bringup_cmd_group = OpaqueFunction(function=group_action)
         
@@ -297,14 +307,14 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_headless_cmd)
     ld.add_action(declare_limit_real_time_factor_cmd)
-    ld.add_action(declare_wait_for_items_cmd)    
+    ld.add_action(declare_wait_for_items_cmd)
+    ld.add_action(declare_gazebo_verbose_cmd)
 
     # Add the commands to the launch description
     ld.add_action(gzserver_cmd)
     ld.add_action(gzclient_cmd)
 
     ld.add_action(start_tf_relay_cmd)
-    ld.add_action(start_item_manager_cmd)
 
     ld.add_action(bringup_cmd_group)
 

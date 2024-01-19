@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
-  <model name="item">
+  <model name="week_5_item">
     <link name="link">
       <gravity>false</gravity>
       <visual name="visual">

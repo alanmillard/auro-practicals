@@ -240,8 +240,10 @@
     </model>
 
     <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
-      <update_rate>0.1</update_rate>
+      <update_rate>100</update_rate>
     </plugin>
+
+    <plugin name="gazebo_ros_item_manager" filename="libgazebo_ros_item_manager.so"/>
 
   </world>
 </sdf>
