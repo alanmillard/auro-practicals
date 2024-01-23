@@ -68,7 +68,7 @@ std::pair<int, int> GazeboRosItemManager::generate_cluster_location(Colour colou
         switch(colour)
         {
             case RED:
-                x = ignition::math::Rand::IntUniform(-2, 1);
+                x = ignition::math::Rand::IntUniform(-2, -1);
                 break;
             case GREEN:
                 x = ignition::math::Rand::IntUniform(-1, 1);
